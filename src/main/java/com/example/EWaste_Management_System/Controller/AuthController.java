@@ -1,38 +1,45 @@
 
 package com.example.EWaste_Management_System.Controller;
 
-import com.example.EWaste_Management_System.DTO.UserRegistrationDTO;
+import com.example.EWaste_Management_System.DTO.LoginDTO;
+import com.example.EWaste_Management_System.DTO.RegistrationDTO;
 import com.example.EWaste_Management_System.Service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
-    
-    @Autowired
-    private UserService userService;
-    
+     private final UserService userService;
+
     @PostMapping("/register")
-    public String register(@RequestBody UserRegistrationDTO dto){
-        return userService.registerUser(dto);
+    public ResponseEntity<?> register(@Valid @RequestBody RegistrationDTO dto) {
+        try {
+            userService.registerUser(dto);
+            return ResponseEntity.ok().body("Registration successful. Check email for verification.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
+        }
     }
     
-     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest loginRequest) {
-        return userService.login(loginRequest.getEmail(), loginRequest.getPassword());
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginDTO dto) {
+        boolean success = userService.login(dto.getEmail(), dto.getPassword());
+        if (success) {
+            return ResponseEntity.ok("Login successful");
+        }
+        return ResponseEntity.status(401).body("Invalid email or password");
     }
-     public static class LoginRequest {
-        private String email;
-        private String password;
 
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
 
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
+    @GetMapping("/verify")
+    public ResponseEntity<?> verify(@RequestParam("token") String token) {
+        boolean ok = userService.verifyToken(token);
+        if (ok) return ResponseEntity.ok("Email verified. You may now login.");
+        return ResponseEntity.badRequest().body("Invalid or expired token.");
     }
 }

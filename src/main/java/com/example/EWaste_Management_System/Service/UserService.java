@@ -1,111 +1,106 @@
 
 package com.example.EWaste_Management_System.Service;
 
-import com.example.EWaste_Management_System.DTO.UserRegistrationDTO;
-import com.example.EWaste_Management_System.Model.User;
+import com.example.EWaste_Management_System.DTO.RegistrationDTO;
+import com.example.EWaste_Management_System.Entity.Role;
+import com.example.EWaste_Management_System.Entity.User;
+import com.example.EWaste_Management_System.Entity.VerificationToken;
+import com.example.EWaste_Management_System.Repository.RoleRepository;
 import com.example.EWaste_Management_System.Repository.UserRepository;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import java.nio.charset.StandardCharsets;
+import com.example.EWaste_Management_System.Repository.VerificationTokenRepository;
+
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import javax.crypto.SecretKey;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
     
-     @Autowired
-    private UserRepository userRepository;
+      private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final VerificationTokenRepository tokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Value("${app.base-url:http://localhost:8080}")
+    private String appBaseUrl;
 
-    // Load JWT properties from application.properties
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    @Value("${jwt.expiration}")
-    private long jwtExpirationMs;
-
-    // ------------ GENERATE KEY FOR TOKEN ---------------
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    @Transactional
+    public User registerUser(RegistrationDTO dto) {
+        if (userRepository.existsByEmail(dto.getEmail())) {
+        throw new RuntimeException("Email already registered");
     }
 
-    private String generateToken(String email) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + jwtExpirationMs);
+        User u = new User();
+        u.setName(dto.getName());
+        u.setEmail(dto.getEmail());
+        u.setPassword(passwordEncoder.encode(dto.getPassword()));
+        u.setEnabled(false);
 
-        return Jwts.builder()
-                .setSubject(email)
-                .setIssuedAt(now)
-                .setExpiration(expiry)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    // ------------ REGISTRATION METHOD ----------------
-    public String registerUser(UserRegistrationDTO dto) {
-
-        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            return "Email Already Exists";
+        Role userRole = roleRepository.findByName("USER");
+        if (userRole == null) {
+            userRole = new Role();
+            userRole.setName("USER");
+            roleRepository.save(userRole);
         }
+        u.getRoles().add(userRole);
 
-        User user = new User();
-        user.setName(dto.getName());
-        user.setEmail(dto.getEmail());
-        user.setPhone(dto.getPhone());
-        user.setPassword(passwordEncoder.encode(dto.getPassword())); // hashed password
+        User saved = userRepository.save(u);
 
-        userRepository.save(user);
-        return "Registration Successful";
+        // create verification token
+        String token = UUID.randomUUID().toString();
+        VerificationToken vt = new VerificationToken();
+        vt.setToken(token);
+        vt.setUser(saved);
+        vt.setExpiryDate(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)));
+        tokenRepository.save(vt);
+
+        // send email
+        String link = appBaseUrl + "/api/auth/verify?token=" + token;
+        String body = "Hi " + saved.getName() + ",\n\nPlease verify your email by clicking the link:\n" + link +
+                      "\n\nIf you did not sign up, ignore this email.\n\nThanks.";
+        emailService.sendEmail(saved.getEmail(), "Verify your E-Waste account", body);
+
+        return saved;
     }
 
-    // ------------ LOGIN METHOD ----------------
-    public String login(String email, String password) {
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Invalid Email"));
-
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Invalid Password");
+    public boolean verifyToken(String token) {
+        VerificationToken vt = tokenRepository.findByToken(token);
+        if (vt == null) return false;
+        if (vt.getExpiryDate().before(new Date())) {
+            return false;
         }
-
-        // Generate JWT token
-        return generateToken(user.getEmail());
+        User u = vt.getUser();
+        u.setEnabled(true);
+        userRepository.save(u);
+        tokenRepository.delete(vt);
+        return true;
     }
     
-    public List<User> getAllUsers(){
-        return userRepository.findAll();
+    public boolean login(String email, String rawPassword) {
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (!user.isEnabled()) {
+        throw new RuntimeException("Please verify your email before login");
     }
-    public Optional<User> getUserById(Long id){
-        return userRepository.findById(id);
+
+    if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+        throw new RuntimeException("Invalid password");
     }
-    public String updateUser(Long id,User updatedUser){
-        Optional<User> existingUser = userRepository.findById(id);
-        if(existingUser.isEmpty()){
-            return "User not Found";
-        }
-        User user=existingUser.get();
-        user.setName(updatedUser.getName());
-        user.setEmail(updatedUser.getEmail());
-        user.setPhone(updatedUser.getPhone());
-        
-        userRepository.save(user);
-        return "User details updated successfully";
-    }
-    
-    public String deleteUser(Long id){
-        if(!userRepository.existsById(id)){
-            return "User not found";
-        }
-        userRepository.deleteById(id);
-        return "User deleted successfully";
-    }
-    
+
+    return true;
+}
+
+
 }
