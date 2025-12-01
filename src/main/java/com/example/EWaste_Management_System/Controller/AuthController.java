@@ -2,6 +2,7 @@
 package com.example.EWaste_Management_System.Controller;
 
 import com.example.EWaste_Management_System.DTO.LoginDTO;
+import com.example.EWaste_Management_System.DTO.LoginResponseDTO;
 import com.example.EWaste_Management_System.DTO.RegistrationDTO;
 import com.example.EWaste_Management_System.Service.UserService;
 import jakarta.validation.Valid;
@@ -26,14 +27,18 @@ public class AuthController {
         }
     }
     
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginDTO dto) {
-        boolean success = userService.login(dto.getEmail(), dto.getPassword());
-        if (success) {
-            return ResponseEntity.ok("Login successful");
-        }
-        return ResponseEntity.status(401).body("Invalid email or password");
+  @PostMapping("/login")
+public ResponseEntity<?> login(@RequestBody LoginDTO dto) {
+
+    try {
+        String token = userService.login(dto.getEmail(), dto.getPassword());
+        return ResponseEntity.ok(new LoginResponseDTO(token));
+
+    } catch (Exception e) {
+        return ResponseEntity.status(401).body(e.getMessage());
     }
+}
+
 
 
     @GetMapping("/verify")

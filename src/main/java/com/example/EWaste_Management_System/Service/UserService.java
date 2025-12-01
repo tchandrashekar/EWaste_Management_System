@@ -8,11 +8,14 @@ import com.example.EWaste_Management_System.Entity.VerificationToken;
 import com.example.EWaste_Management_System.Repository.RoleRepository;
 import com.example.EWaste_Management_System.Repository.UserRepository;
 import com.example.EWaste_Management_System.Repository.VerificationTokenRepository;
+import com.example.EWaste_Management_System.Security.JwtUtil;
 
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +34,9 @@ public class UserService {
     private final VerificationTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    
+    private final JwtUtil jwtUtil;
+
 
     @Value("${app.base-url:http://localhost:8080}")
     private String appBaseUrl;
@@ -87,7 +93,7 @@ public class UserService {
         return true;
     }
     
-    public boolean login(String email, String rawPassword) {
+    public String login(String email, String rawPassword) {
     User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -99,8 +105,47 @@ public class UserService {
         throw new RuntimeException("Invalid password");
     }
 
-    return true;
+    String roleName = user.getRoles()
+            .stream()
+            .findFirst()
+            .get()
+            .getName();
+
+    // Generate JWT
+    return jwtUtil.generateToken(email, roleName);
 }
+    
+    
+     public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // Get user by ID
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    // Update user
+    public User updateUser(Long id, User updatedUser) {
+        return userRepository.findById(id).map(user -> {
+            user.setName(updatedUser.getName());
+            user.setEmail(updatedUser.getEmail());
+            // Optional: update password if provided
+            if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
+                user.setPassword(updatedUser.getPassword());
+            }
+            user.setEnabled(updatedUser.isEnabled());
+            return userRepository.save(user);
+        }).orElseThrow(() -> new RuntimeException("User not found with id " + id));
+    }
+
+    // Delete user
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("User not found with id " + id);
+        }
+        userRepository.deleteById(id);
+    }
 
 
 }
