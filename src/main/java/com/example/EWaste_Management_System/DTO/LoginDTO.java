@@ -1,6 +1,5 @@
 
 package com.example.EWaste_Management_System.DTO;
-
 import lombok.Data;
 
 @Data
