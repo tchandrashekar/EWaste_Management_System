@@ -3,12 +3,12 @@ package com.example.EWaste_Management_System.DTO;
 
 import lombok.*;
 
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class EwasteDTO {
-    
-   private Long userId;
+    private Long userId;
     private String deviceType;
     private String brand;
     private String model;
@@ -17,5 +17,4 @@ public class EwasteDTO {
     private String imageUrl;
     private String pickupAddress;
     private String remarks;
-    
 }

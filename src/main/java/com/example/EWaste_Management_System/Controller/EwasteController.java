@@ -1,92 +1,56 @@
 
 package com.example.EWaste_Management_System.Controller;
 
+
 import com.example.EWaste_Management_System.DTO.EwasteDTO;
-import com.example.EWaste_Management_System.DTO.StatusUpdateDTO;
 import com.example.EWaste_Management_System.Entity.Ewaste;
-import com.example.EWaste_Management_System.Entity.Status;
-import com.example.EWaste_Management_System.Entity.User;
 import com.example.EWaste_Management_System.Repository.EwasteRepository;
 import com.example.EWaste_Management_System.Repository.UserRepository;
 import com.example.EWaste_Management_System.Service.EwasteService;
 import java.security.Principal;
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 @RestController
 @RequestMapping("/api/ewaste")
+@RequiredArgsConstructor
 public class EwasteController {
 
-    @Autowired
-    private EwasteService ewasteService;
+    private final EwasteService ewasteService;
+    private final EwasteRepository ewasteRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private EwasteRepository ewasteRepository;
+    @PreAuthorize("hasRole('USER')")
+    @PostMapping("/submit")
+    public ResponseEntity<?> submitRequest(Principal principal, @RequestBody EwasteDTO dto) {
+        // use authenticated user email rather than userId from DTO
+        String email = principal.getName();
+        Ewaste saved = ewasteService.createRequest(email, dto.getDeviceType(), dto.getBrand(),
+                dto.getModel(), dto.getCondition(), dto.getQuantity(), dto.getPickupAddress(), dto.getRemarks());
+        return ResponseEntity.ok(saved);
+    }
 
-    @Autowired
-    private UserRepository userRepository;
-
-    // USER submitting request
-        @PostMapping("/submit")
-      public ResponseEntity<?> submitRequest(@RequestBody EwasteDTO dto) {
-          Ewaste saved = ewasteService.createEwaste(dto.getUserId(), dto);
-          return ResponseEntity.ok(saved);
-      }
-
-
-    // USER get their own requests
+    @PreAuthorize("hasRole('USER')")
     @GetMapping("/my-requests")
-    public ResponseEntity<?> myRequests(Authentication authentication) {
-        String email = authentication.getName();
+    public ResponseEntity<?> myRequests(Principal principal) {
+        String email = principal.getName();
         return ResponseEntity.ok(ewasteService.getMyRequests(email));
     }
 
-    // ADMIN create ewaste for a user
-    @PostMapping("/{userId}")
-    public Ewaste createEwaste(@PathVariable Long userId, @RequestBody EwasteDTO dto) {
-        return ewasteService.createEwaste(userId, dto);
-    }
-
-    // ADMIN get user ewaste
-    @GetMapping("/{userId}")
-    public List<Ewaste> getUserEwaste(@PathVariable Long userId) {
-        return ewasteService.getUserEwaste(userId);
-    }
-
-    // ADMIN get all ewaste
-    @GetMapping
-    public List<Ewaste> getAllEwaste() {
-        return ewasteService.getAll();
-    }
-
-    // Request status
+    @PreAuthorize("hasRole('USER')")
     @GetMapping("/status/{id}")
     public ResponseEntity<?> getStatus(@PathVariable Long id, Principal principal) {
-
-        User user = userRepository.findByEmail(principal.getName())
+        var user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Ewaste ewaste = ewasteRepository.findById(id)
+        var ewaste = ewasteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
         if (!ewaste.getUser().getId().equals(user.getId())) {
             return ResponseEntity.status(403).body("You cannot access another user's request");
         }
-
         return ResponseEntity.ok(ewaste.getStatus());
     }
-    
-    
-  @PutMapping("/ewaste/update-status/{id}")
-public ResponseEntity<?> updateStatus(
-        @PathVariable Long id,
-        @RequestBody StatusUpdateDTO dto  // 👈 read from JSON body
-) {
-    Ewaste updated = ewasteService.updateStatus(id, dto.getStatus());
-    return ResponseEntity.ok(updated);
-}
-
 }
