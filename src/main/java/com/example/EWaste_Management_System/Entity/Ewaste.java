@@ -40,4 +40,8 @@ public class Ewaste {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+    
+       @ManyToOne
+    @JoinColumn(name = "pickup_person_id")
+    private User pickupPerson;
 }

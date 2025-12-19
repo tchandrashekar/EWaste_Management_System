@@ -68,6 +68,7 @@ public class AdminEwasteController {
     ) {
         Ewaste scheduled = ewasteService.schedulePickup(
             id,
+            dto.getPickupPersonId(), 
             dto.getPickupDate(),
             dto.getTimeSlot(),
             dto.getStaff()

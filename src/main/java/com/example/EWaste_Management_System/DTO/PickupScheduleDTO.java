@@ -7,6 +7,7 @@ import lombok.Data;
 
 @Data
 public class PickupScheduleDTO {
+     private Long pickupPersonId;
     private LocalDateTime pickupDate;  // ISO format String
     private String timeSlot;
     private String staff;

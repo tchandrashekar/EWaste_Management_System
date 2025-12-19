@@ -84,10 +84,14 @@ public class EwasteService {
     }
 
     @Transactional
-    public Ewaste schedulePickup(Long id, LocalDateTime pickupDate, String timeSlot, String assignedStaff) {
+    public Ewaste schedulePickup(Long id, Long pickupPersonId,LocalDateTime pickupDate, String timeSlot, String assignedStaff) {
         Ewaste ewaste = ewasteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
-
+        
+         User pickupPerson = userRepository.findById(pickupPersonId)
+            .orElseThrow(() -> new RuntimeException("Pickup person not found"));
+         
+         ewaste.setPickupPerson(pickupPerson);
         ewaste.setPickupDate(pickupDate);
         ewaste.setPickupTimeSlot(timeSlot);
         ewaste.setAssignedStaff(assignedStaff);
@@ -102,4 +106,43 @@ public class EwasteService {
 
         return saved;
     }
+    
+     public List<Ewaste> getPickupsForPerson(String email) {
+    User pickupPerson = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    return ewasteRepository.findByPickupPerson(pickupPerson);
+}
+
+    public Ewaste markAsPicked(Long ewasteId, String email) {
+
+    Ewaste ewaste = ewasteRepository.findById(ewasteId)
+            .orElseThrow(() -> new RuntimeException("Request not found"));
+
+    if (ewaste.getPickupPerson() == null ||
+        !ewaste.getPickupPerson().getEmail().equals(email)) {
+        throw new RuntimeException("Not assigned to you");
+    }
+
+    if (ewaste.getStatus() != Status.SCHEDULED) {
+        throw new RuntimeException("Pickup not scheduled");
+    }
+
+    ewaste.setStatus(Status.PICKED);
+    return ewasteRepository.save(ewaste);
+}
+
+    public Ewaste completeRequest(Long ewasteId) {
+
+    Ewaste ewaste = ewasteRepository.findById(ewasteId)
+            .orElseThrow(() -> new RuntimeException("Request not found"));
+
+    if (ewaste.getStatus() != Status.PICKED) {
+        throw new RuntimeException("Pickup not completed yet");
+    }
+
+    ewaste.setStatus(Status.COMPLETED);
+    return ewasteRepository.save(ewaste);
+}
+
 }

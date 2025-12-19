@@ -10,4 +10,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EwasteRepository extends JpaRepository<Ewaste, Long> {
     List<Ewaste> findByUser(User user);
+     List<Ewaste> findByPickupPerson(User pickupPerson);
 }

@@ -51,6 +51,7 @@ public class SecurityConfig {
               .requestMatchers("/h2-console/**").permitAll()
               .requestMatchers("/api/admin/**").hasRole("ADMIN")
               .requestMatchers("/api/ewaste/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/pickup/**").hasRole("PICKUP")
               .requestMatchers("/api/ewaste/user/**").hasRole("USER")
               .anyRequest().authenticated()
           )
