@@ -1,11 +1,16 @@
 
 package com.example.EWaste_Management_System.Controller;
 
+import com.example.EWaste_Management_System.DTO.EwasteAdminDTO;
 import com.example.EWaste_Management_System.DTO.EwasteDTO;
+import com.example.EWaste_Management_System.DTO.PickupPersonDTO;
 import com.example.EWaste_Management_System.DTO.PickupScheduleDTO;
 import com.example.EWaste_Management_System.DTO.StatusUpdateDTO;
 import com.example.EWaste_Management_System.Entity.Ewaste;
+import com.example.EWaste_Management_System.Entity.User;
 import com.example.EWaste_Management_System.Service.EwasteService;
+import com.example.EWaste_Management_System.Service.UserService;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +32,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminEwasteController {
 
     private final EwasteService ewasteService;
-
+    
+    private final UserService userService;
+ 
     @GetMapping("/all")
-    public List<Ewaste> getAll() {
-        return ewasteService.getAll();
-    }
+@PreAuthorize("hasRole('ADMIN')")
+public List<EwasteAdminDTO> getAllRequests() {
+    return ewasteService.getAllAdminRequests();
+}
+
 
     @GetMapping("/user/{userId}")
     public List<Ewaste> getUserEwaste(@PathVariable Long userId) {
@@ -48,33 +57,40 @@ public class AdminEwasteController {
         Ewaste updated = ewasteService.updateStatus(id, dto.getStatus());
         return ResponseEntity.ok(updated);
     }
-/*
-    @PutMapping("/schedule/{id}")
-    public ResponseEntity<?> schedulePickup(
-            @PathVariable Long id,
-            @RequestParam("pickupDate") String pickupDateIso, // e.g. "2025-12-10T10:00"
-            @RequestParam("timeSlot") String timeSlot,
-            @RequestParam("staff") String staff
-    ) {
-        LocalDateTime dt = LocalDateTime.parse(pickupDateIso);
-        Ewaste scheduled = ewasteService.schedulePickup(id, dt, timeSlot, staff);
-        return ResponseEntity.ok(scheduled);
-    }
-  */
-    @PutMapping("/schedule/{id}")
+
+ 
+     @PutMapping("/schedule/{id}")
     public ResponseEntity<?> schedulePickup(
             @PathVariable Long id,
             @RequestBody PickupScheduleDTO dto
     ) {
         Ewaste scheduled = ewasteService.schedulePickup(
             id,
-            dto.getPickupPersonId(), 
+                 dto.getPickupPersonId(), 
             dto.getPickupDate(),
             dto.getTimeSlot(),
             dto.getStaff()
     );
         return ResponseEntity.ok(scheduled);
     }
+    
+    
+    @PutMapping("/complete/{id}")
+public ResponseEntity<?> complete(@PathVariable Long id) {
+    return ResponseEntity.ok(ewasteService.completeRequest(id));
+}
 
+  @GetMapping("/pickup-persons")
+    public List<User> getPickupPersons() {
+        return userService.getPickupPersons();
+    }
+    
+     @PostMapping("/create")
+    public ResponseEntity<User> createPickupPerson(
+            @Valid @RequestBody PickupPersonDTO dto
+    ) {
+        return ResponseEntity.ok(userService.createPickupPerson(dto));
+    }
+    
    
 }

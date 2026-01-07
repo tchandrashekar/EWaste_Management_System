@@ -35,13 +35,18 @@ public class Ewaste {
     // Scheduling fields
     private LocalDateTime pickupDate;
     private String pickupTimeSlot;
-      private String assignedStaff;
+    private String assignedStaff;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
     
-       @ManyToOne
+    @ManyToOne
     @JoinColumn(name = "pickup_person_id")
     private User pickupPerson;
+    
+      @Lob
+      @Basic(fetch = FetchType.LAZY)
+    @Column(name = "image_data", columnDefinition = "MEDIUMBLOB")
+    private byte[] imageData;
 }

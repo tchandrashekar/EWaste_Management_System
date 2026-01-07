@@ -1,6 +1,7 @@
 
 package com.example.EWaste_Management_System.Service;
 
+import com.example.EWaste_Management_System.DTO.PickupPersonDTO;
 import com.example.EWaste_Management_System.DTO.RegistrationDTO;
 import com.example.EWaste_Management_System.Entity.Role;
 import com.example.EWaste_Management_System.Entity.User;
@@ -127,4 +128,38 @@ public class UserService {
         }
         userRepository.deleteById(id);
     }
+    
+    @Transactional
+public User createPickupPerson(PickupPersonDTO dto) {
+
+    if (userRepository.existsByEmail(dto.getEmail())) {
+        throw new RuntimeException("Email already exists");
+    }
+
+    User user = new User();
+    user.setName(dto.getName());
+    user.setEmail(dto.getEmail());
+    user.setPassword(passwordEncoder.encode(dto.getPassword()));
+    user.setPhone(dto.getPhone());
+    user.setEnabled(true); // directly enabled
+
+    Role pickupRole = roleRepository.findByName("PICKUP");
+    if (pickupRole == null) {
+        pickupRole = new Role();
+        pickupRole.setName("PICKUP");
+        roleRepository.save(pickupRole);
+    }
+
+    user.getRoles().add(pickupRole);
+    return userRepository.save(user);
+}
+
+    
+     public List<User> getPickupPersons() {
+        return userRepository.findByRoles_Name("PICKUP");
+    }
+     
+     public Optional<User> getByEmail(String email) {
+    return userRepository.findByEmail(email);
+}
 }
