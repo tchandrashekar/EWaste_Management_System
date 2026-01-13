@@ -1,6 +1,7 @@
 
 package com.example.EWaste_Management_System.Controller;
 
+import com.example.EWaste_Management_System.DTO.PickupEwasteDTO;
 import com.example.EWaste_Management_System.Entity.Ewaste;
 import com.example.EWaste_Management_System.Service.EwasteService;
 import java.util.List;
@@ -17,10 +18,11 @@ public class PickupEwasteController {
 
     private final EwasteService ewasteService;
 
-    @GetMapping("/my-pickups")
-    public List<Ewaste> myPickups(Authentication auth) {
-        return ewasteService.getPickupsForPerson(auth.getName());
-    }
+     @GetMapping("/my-pickups")
+public List<PickupEwasteDTO> myPickups(Authentication auth) {
+    return ewasteService.getMyPickups(auth.getName());
+}
+
 
     @PutMapping("/picked/{id}")
     public Ewaste markPicked(@PathVariable Long id,
