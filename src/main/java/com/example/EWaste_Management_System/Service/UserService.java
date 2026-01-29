@@ -35,7 +35,8 @@ public class UserService {
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
 
-    @Value("${app.base-url:http://localhost:8080}")
+   // @Value("${app.base-url:http://localhost:8080}")
+    @Value("${APP_BASE_URL}")
     private String appBaseUrl;
 
     @Transactional
